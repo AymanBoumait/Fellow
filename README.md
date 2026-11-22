@@ -89,9 +89,9 @@ python app.py --browser
 
 ## Step-by-Step Guide: How to Build a Standalone `.exe` (Windows)
 
-Packaging Fellow as a Windows executable lets students, professors, or anyone launch Fellow by double-clicking an icon—without opening a terminal or installing Python packages manually. *(End users still need Ollama installed once for local model execution.)*
+Packaging Fellow as a Windows executable or setup installer lets students, professors, or anyone launch Fellow by double-clicking an icon—without opening a terminal or installing Python packages manually.
 
-### Option A: Automated Build Script (Recommended)
+### Option A: Automated Build Script (`dist\Fellow\Fellow.exe` — App Only)
 1. Ensure dependencies (including `pyinstaller`) are installed in your active environment:
    ```powershell
    pip install -r requirements.txt
@@ -105,9 +105,9 @@ Packaging Fellow as a Windows executable lets students, professors, or anyone la
    ```text
    dist\Fellow\Fellow.exe
    ```
-   *(Tip: Right-click `dist\Fellow\Fellow.exe` → **Show more options → Send to → Desktop (create shortcut)** for one-click access.)*
+   *(Tip: Right-click `dist\Fellow\Fellow.exe` → **Show more options → Send to → Desktop (create shortcut)** for one-click access. Note: End users using Option A/B need [Ollama](https://ollama.com/download) installed locally; use **Option C** below to bundle Ollama into one installer.)*
 
-### Option B: Single-File Portable `.exe` (`--onefile`)
+### Option B: Single-File Portable `.exe` (`--onefile` — App Only)
 If you prefer a single portable `.exe` file instead of a folder (note that `--onefile` takes a few extra seconds at startup to unpack bundled binaries):
 ```powershell
 pyinstaller --noconfirm --clean --windowed --onefile `
@@ -124,18 +124,26 @@ pyinstaller --noconfirm --clean --windowed --onefile `
 ```
 The standalone executable will be generated at `dist\Fellow.exe`.
 
-### Option C: Full Windows Setup Installer (`FellowSetup.exe`)
-An Inno Setup script (`installer.iss`) is included to package Fellow into a standard Windows Setup wizard:
-1. Install [Inno Setup 6](https://jrsoftware.org/isdl.php).
-2. Run `.\build_exe.ps1` first so `dist\Fellow\Fellow.exe` is ready.
-3. Compile the installer in PowerShell or the Inno Setup IDE:
+### Option C: All-in-One Offline Windows Installer (`FellowSetup.exe` — Bundles Fellow + Ollama)
+An Inno Setup script (`installer.iss`) and automated PowerShell builder (`build_installer.ps1`) package **both Fellow and OllamaSetup.exe** into one offline setup wizard (`installer_output\FellowSetup.exe`) so non-technical users do not need Python or Ollama pre-installed:
+
+1. Install **Inno Setup 6**:
    ```powershell
-   & "C:\Program Files (x86)\Inno Setup 6\ISCC.exe" installer.iss
+   winget install JRSoftware.InnoSetup
    ```
-4. Share the resulting installer located at:
+   *(Or download directly from [jrsoftware.org/isdl.php](https://jrsoftware.org/isdl.php).)*
+2. Run the all-in-one installer build script from the repository root:
+   ```powershell
+   .\build_installer.ps1
+   ```
+   This script automatically builds `dist\Fellow\Fellow.exe`, downloads the official `OllamaSetup.exe` into `installer_assets/` (excluded from Git via `.gitignore`), and compiles:
    ```text
    installer_output\FellowSetup.exe
    ```
+   *(Optional flags: `.\build_installer.ps1 -SkipExeBuild` reuses an existing `dist\Fellow\Fellow.exe`; `-ForceDownloadOllama` refreshes `installer_assets\OllamaSetup.exe`.)*
+3. **What end users experience**:
+   - Double-clicking `FellowSetup.exe` installs Fellow normally and silently installs `OllamaSetup.exe` automatically only if Ollama is not already installed on their computer—no separate Ollama or Python setup required.
+   - *(Note: `FellowSetup.exe` typically lands around ~1.2–1.5 GB because it bundles `OllamaSetup.exe`, which fits under GitHub Releases' 2 GB per-file upload limit. Unsigned `.exe` installers show a standard Windows SmartScreen prompt — click **More info → Run anyway** unless code-signed.)*
 
 ---
 

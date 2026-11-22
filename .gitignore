@@ -16,6 +16,7 @@ ENV/
 # PyInstaller & Inno Setup build outputs
 build/
 dist/
+installer_assets/
 installer_output/
 *.manifest
 *.spec
