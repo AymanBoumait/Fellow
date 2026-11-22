@@ -1,0 +1,776 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Fellow</title>
+  <link rel="icon" type="image/png" href="/assets/icon.png" />
+  <link rel="stylesheet" href="/static/css/styles.css" />
+</head>
+<body>
+  <!-- =====================================================================
+       FIRST-RUN WELCOME & AUTOMATIC SETUP OVERLAY
+       ===================================================================== -->
+  <div id="welcome-overlay" class="modal-overlay hidden" role="dialog" aria-modal="true" aria-labelledby="welcome-title">
+    <div class="welcome-card">
+      <div class="welcome-header">
+        <div class="fellow-logo-badge large">
+          <img src="/assets/logo.png" alt="Fellow Logo" class="fellow-logo-img" />
+        </div>
+        <h1 id="welcome-title">Hi, I'm Fellow, your offline study and research companion</h1>
+        <p class="welcome-subtitle">
+          Everything runs privately on your own laptop — no cloud accounts, no subscriptions, and no internet needed once set up.
+        </p>
+      </div>
+
+      <!-- STEP 1: OLLAMA NOT INSTALLED SCREEN -->
+      <div id="welcome-step-ollama" class="welcome-step hidden">
+        <div class="info-banner warning-banner">
+          <div class="banner-icon">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <circle cx="12" cy="12" r="10"></circle>
+              <line x1="12" y1="8" x2="12" y2="12"></line>
+              <line x1="12" y1="16" x2="12.01" y2="16"></line>
+            </svg>
+          </div>
+          <div class="banner-text">
+            <h3>Let's install Ollama first (takes 1 minute)</h3>
+            <p>
+              Fellow uses <strong>Ollama</strong> to run AI models right on your computer. We couldn't find Ollama running on your device yet.
+            </p>
+          </div>
+        </div>
+
+        <ol class="setup-steps-list">
+          <li>
+            <strong>1. Download Ollama:</strong> Click the button below to open Ollama's official download page and download the installer for your system.
+          </li>
+          <li>
+            <strong>2. Run the Installer:</strong> Open the downloaded file and click Install.
+          </li>
+          <li>
+            <strong>3. Return to Fellow:</strong> Click <em>"Check Again"</em> below and Fellow will finish everything automatically!
+          </li>
+        </ol>
+
+        <div class="welcome-actions">
+          <button type="button" id="btn-download-ollama" class="btn btn-primary btn-lg" data-external-url="https://ollama.com/download">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+              <polyline points="7 10 12 15 17 10"></polyline>
+              <line x1="12" y1="15" x2="12" y2="3"></line>
+            </svg>
+            Open Ollama Download Page
+          </button>
+          <button type="button" id="btn-recheck-ollama" class="btn btn-secondary btn-lg">
+            I've Installed Ollama — Check Again
+          </button>
+        </div>
+        <div class="welcome-skip-row">
+          <button type="button" id="btn-skip-ollama-check" class="btn-text-link">
+            Explore Fellow's interface first without setup
+          </button>
+        </div>
+      </div>
+
+      <!-- STEP 2: RAM CHECK & MODEL RECOMMENDATION -->
+      <div id="welcome-step-ram" class="welcome-step hidden">
+        <div class="ram-recommendation-box">
+          <div class="ram-badge-row">
+            <span class="status-pill success-pill">
+              <span class="dot"></span> Ollama Connected
+            </span>
+            <span id="welcome-ram-detected-pill" class="status-pill neutral-pill">
+              Memory Check Complete
+            </span>
+          </div>
+          <p id="welcome-ram-message" class="ram-plain-text">
+            Checking your computer's memory...
+          </p>
+        </div>
+
+        <div class="tier-selection-section">
+          <label class="section-label">Choose your Fellow assistant (or accept our recommendation):</label>
+          <div id="welcome-tier-cards" class="tier-cards-grid">
+            <!-- Populated dynamically from ram_info.tiers -->
+          </div>
+        </div>
+
+        <div class="welcome-actions">
+          <button type="button" id="btn-accept-recommendation" class="btn btn-primary btn-lg">
+            Accept Recommendation &amp; Start Setup
+          </button>
+        </div>
+        <div class="welcome-skip-row">
+          <button type="button" id="btn-skip-setup" class="btn-text-link">
+            Skip automatic download for now
+          </button>
+        </div>
+      </div>
+
+      <!-- STEP 3: AUTOMATIC MODEL PULL WITH PROGRESS BAR -->
+      <div id="welcome-step-download" class="welcome-step hidden">
+        <div class="setup-progress-header">
+          <h3>Setting up Fellow for the first time, this takes a few minutes</h3>
+          <p>
+            Fellow is downloading your chosen AI assistant and the document reading engine so everything works offline.
+          </p>
+        </div>
+
+        <div id="welcome-downloads-container" class="setup-downloads-list">
+          <!-- Live download progress bars with %, MB, Pause, Resume, Cancel -->
+        </div>
+
+        <div class="welcome-actions">
+          <button type="button" id="btn-finish-welcome" class="btn btn-primary btn-lg hidden">
+            Start Studying with Fellow
+          </button>
+          <button type="button" id="btn-welcome-background" class="btn btn-secondary">
+            Continue in Background &amp; Open Fellow
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- =====================================================================
+       MAIN APPLICATION SHELL
+       ===================================================================== -->
+  <div class="app-layout">
+    <!-- LEFT SIDEBAR -->
+    <aside id="app-sidebar" class="sidebar">
+      <!-- Top Brand / Wordmark Area -->
+      <div class="sidebar-brand">
+        <div class="brand-left">
+          <div class="fellow-logo-badge">
+            <img src="/assets/logo.png" alt="Fellow Logo" class="fellow-logo-img" />
+          </div>
+          <div>
+            <div class="brand-title">Fellow</div>
+            <div class="brand-tagline">Offline Study Companion</div>
+          </div>
+        </div>
+        <button type="button" id="btn-about-icon" class="icon-btn" title="About Fellow">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <circle cx="12" cy="12" r="10"></circle>
+            <line x1="12" y1="16" x2="12" y2="12"></line>
+            <line x1="12" y1="8" x2="12.01" y2="8"></line>
+          </svg>
+        </button>
+      </div>
+
+      <!-- Big Obvious New Chat Button -->
+      <div class="sidebar-new-chat-wrap">
+        <button type="button" id="btn-new-chat" class="btn btn-primary btn-new-chat">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2">
+            <line x1="12" y1="5" x2="12" y2="19"></line>
+            <line x1="5" y1="12" x2="19" y2="12"></line>
+          </svg>
+          <span>New Chat</span>
+        </button>
+      </div>
+
+      <!-- Document Upload & File Manager Section -->
+      <div class="sidebar-section">
+        <div class="sidebar-section-header">
+          <span class="sidebar-section-title">Study Documents</span>
+          <span id="doc-count-badge" class="count-badge">0</span>
+        </div>
+
+        <!-- Upload Scope Choice for Sidebar Uploader -->
+        <div class="upload-scope-selector" role="group" aria-label="Default upload scope">
+          <span class="upload-scope-label">Scope:</span>
+          <div class="scope-pill-group">
+            <button type="button" id="btn-sidebar-scope-global" class="scope-pill-btn active" data-upload-scope="global" title="Available in all chats">
+              All chats
+            </button>
+            <button type="button" id="btn-sidebar-scope-chat" class="scope-pill-btn" data-upload-scope="chat" title="Only in this chat">
+              Only this chat
+            </button>
+          </div>
+        </div>
+
+        <!-- Drag & Drop Upload Box (Global Library Uploader) -->
+        <div id="drop-zone" class="drop-zone" tabindex="0" role="button" aria-label="Upload PDF, DOCX, TXT, or Image documents">
+          <input type="file" id="file-input" accept=".pdf,.docx,.txt,.png,.jpg,.jpeg" multiple class="hidden-file-input" />
+          <input type="file" id="chat-file-input" accept=".pdf,.docx,.txt,.png,.jpg,.jpeg" multiple class="hidden-file-input" />
+          <input type="file" id="reupload-file-input" accept=".pdf,.docx,.txt,.png,.jpg,.jpeg" class="hidden-file-input" />
+          <div class="drop-zone-content">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9">
+              <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+              <polyline points="17 8 12 3 7 8"></polyline>
+              <line x1="12" y1="3" x2="12" y2="15"></line>
+            </svg>
+            <div class="drop-zone-title">Upload or drag files here</div>
+            <div id="drop-zone-scope-hint" class="drop-zone-hint">PDF, DOCX, TXT, PNG, JPG • Available in all chats</div>
+          </div>
+        </div>
+
+        <!-- Upload Progress / Scanned PDF Alert Area -->
+        <div id="upload-status-area" class="upload-status-area hidden"></div>
+
+        <!-- Uploaded Documents List (Shows all documents with Global vs. Private to Chat badges) -->
+        <div id="documents-list" class="documents-list">
+          <!-- Populated dynamically -->
+        </div>
+      </div>
+
+      <!-- Saved Chats List Section -->
+      <div class="sidebar-section sidebar-chats-section">
+        <div class="sidebar-section-header">
+          <span class="sidebar-section-title">Saved Chats</span>
+        </div>
+        <div id="chats-list" class="chats-list">
+          <!-- Populated dynamically -->
+        </div>
+      </div>
+
+      <!-- Sidebar Footer: Browse Models, Settings -->
+      <div class="sidebar-footer">
+        <button type="button" id="btn-sidebar-models" class="sidebar-footer-btn">
+          <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"></path>
+            <polyline points="3.27 6.96 12 12.01 20.73 6.96"></polyline>
+            <line x1="12" y1="22.08" x2="12" y2="12"></line>
+          </svg>
+          <span>Browse Models</span>
+          <span id="active-download-badge" class="dl-pulse-badge hidden">1</span>
+        </button>
+
+        <button type="button" id="btn-sidebar-settings" class="sidebar-footer-btn">
+          <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <circle cx="12" cy="12" r="3"></circle>
+            <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path>
+          </svg>
+          <span>Settings</span>
+        </button>
+      </div>
+    </aside>
+
+    <!-- MAIN WORKSPACE -->
+    <div class="main-workspace">
+      <!-- TOP HEADER BAR (Dark Oxford Ink treatment) -->
+      <header class="topbar">
+        <div class="topbar-left">
+          <div class="active-chat-title-group">
+            <h2 id="current-chat-title" class="current-chat-title" title="Click to rename this chat">New Study Session</h2>
+            <button type="button" id="btn-rename-current-chat" class="header-icon-btn" title="Rename chat">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M12 20h9"></path>
+                <path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"></path>
+              </svg>
+            </button>
+          </div>
+        </div>
+
+        <div class="topbar-center">
+          <!-- Custom-Styled Pill Model Selector -->
+          <div class="model-selector-pill">
+            <span class="model-status-dot" aria-hidden="true"></span>
+            <label for="chat-model-select" class="sr-only">Assistant Model</label>
+            <div class="custom-select-wrap">
+              <select id="chat-model-select" class="model-select" title="Switch active AI assistant model">
+                <!-- Populated dynamically -->
+              </select>
+              <svg class="select-chevron" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4">
+                <polyline points="6 9 12 15 18 9"></polyline>
+              </svg>
+            </div>
+            <button type="button" id="btn-header-browse-models" class="header-pill-action" title="Browse &amp; download models">
+              Catalog
+            </button>
+          </div>
+        </div>
+
+        <div class="topbar-right">
+          <!-- Refined Custom Pill Toggle for Simple / Advanced Mode -->
+          <div class="mode-toggle-pill header-mode-toggle" role="group" aria-label="Switch between Simple and Advanced mode">
+            <button type="button" id="btn-mode-simple" class="mode-btn active" data-mode="simple">
+              <span class="mode-dot"></span>
+              <span>Simple</span>
+            </button>
+            <button type="button" id="btn-mode-advanced" class="mode-btn" data-mode="advanced">
+              <span class="mode-dot"></span>
+              <span>Advanced</span>
+            </button>
+          </div>
+
+          <!-- Export Current Chat to Markdown -->
+          <button type="button" id="btn-export-chat" class="header-export-btn" title="Export chat to a Markdown (.md) file">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+              <polyline points="7 10 12 15 17 10"></polyline>
+              <line x1="12" y1="15" x2="12" y2="3"></line>
+            </svg>
+            <span>Export .md</span>
+          </button>
+        </div>
+      </header>
+
+      <!-- CONTENT SPLIT: CHAT COLUMN + (IN ADVANCED MODE) ADVANCED STUDIO PANEL -->
+      <div class="workspace-body">
+        <!-- CHAT COLUMN -->
+        <main class="chat-column">
+          <!-- Scrollable Messages Container -->
+          <div id="chat-messages-wrap" class="chat-messages-wrap">
+            <!-- Empty State when chat has no messages -->
+            <div id="chat-empty-state" class="chat-empty-state">
+              <div class="empty-state-emblem">
+                <img src="/assets/logo.png" alt="Fellow Owl Logo" class="fellow-logo-img" />
+              </div>
+              <h2 class="empty-state-title">Fellow is ready to help</h2>
+              <p id="empty-state-subtitle" class="empty-state-subtitle">
+                Ask Fellow anything about your documents, course readings, or study topics. Everything stays privately on your device.
+              </p>
+
+              <div class="starter-prompts-grid">
+                <button type="button" class="starter-card" data-prompt="Summarize the key themes and takeaways from my uploaded documents in clear bullet points.">
+                  <span class="starter-tag">Summarize Readings</span>
+                  <span class="starter-text">Summarize the key themes and takeaways from my uploaded documents</span>
+                </button>
+                <button type="button" class="starter-card" data-prompt="Create 5 practice review questions with short answer keys based on my uploaded notes.">
+                  <span class="starter-tag">Exam Practice</span>
+                  <span class="starter-text">Create 5 practice review questions with answer keys from my notes</span>
+                </button>
+                <button type="button" class="starter-card" data-prompt="Explain the main concepts in simple, everyday language with an example a first-year student could follow.">
+                  <span class="starter-tag">Explain Simply</span>
+                  <span class="starter-text">Explain the main concepts in simple, everyday language with examples</span>
+                </button>
+                <button type="button" class="starter-card" data-prompt="Help me brainstorm a structured essay outline and thesis statement based on these materials.">
+                  <span class="starter-tag">Essay &amp; Paper Prep</span>
+                  <span class="starter-text">Help me brainstorm a structured essay outline and thesis statement</span>
+                </button>
+              </div>
+            </div>
+
+            <!-- Messages Stream -->
+            <div id="chat-messages" class="chat-messages"></div>
+          </div>
+
+          <!-- Composer & Active Chat Document Panel -->
+          <div class="chat-composer-outer">
+            <!-- Expandable Chat Document Scoping Panel -->
+            <div id="chat-doc-drawer" class="chat-doc-drawer hidden">
+              <div class="chat-doc-drawer-header">
+                <div class="chat-doc-drawer-title">
+                  <strong>Documents Active in This Chat</strong>
+                  <span>Files uploaded directly in a chat default to <em>"Only in this chat"</em>. Click any file's badge to switch scope.</span>
+                </div>
+                <button type="button" id="btn-close-chat-doc-drawer" class="icon-btn-sm" title="Close panel">✕</button>
+              </div>
+              <div id="chat-scoped-docs-list" class="chat-scoped-docs-list">
+                <!-- Populated dynamically with clear separation between "Only in this chat" and "Available in all chats" -->
+              </div>
+            </div>
+
+            <!-- Summary Bar above Composer -->
+            <div id="composer-doc-bar" class="composer-doc-bar">
+              <button type="button" id="btn-toggle-chat-doc-drawer" class="composer-doc-indicator-btn" title="View which documents are scoped to this chat vs. available in all chats">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+                  <polyline points="14 2 14 8 20 8"></polyline>
+                </svg>
+                <span id="composer-doc-status">Upload a PDF, DOCX, TXT, or Image to study with your files</span>
+                <span id="composer-doc-pills" class="composer-doc-pills"></span>
+              </button>
+              <div class="composer-doc-actions">
+                <button type="button" id="btn-composer-upload" class="btn-inline-upload" title="Upload a document or image directly to this chat (defaults to 'Only in this chat')">
+                  + Upload to This Chat
+                </button>
+              </div>
+            </div>
+
+            <form id="chat-form" class="chat-composer">
+              <button type="button" id="btn-attach-file" class="icon-btn composer-attach-btn" title="Upload PDF, DOCX, TXT, or Image to this chat (defaults to 'Only in this chat')">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48"></path>
+                </svg>
+              </button>
+              <textarea
+                id="chat-input"
+                class="chat-input"
+                rows="1"
+                placeholder="Ask Fellow anything — or upload files/images to study..."
+                aria-label="Ask Fellow anything"
+              ></textarea>
+              <button type="submit" id="btn-send-msg" class="btn btn-primary composer-send-btn" title="Send message (Enter)">
+                <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2">
+                  <line x1="22" y1="2" x2="11" y2="13"></line>
+                  <polygon points="22 2 15 22 11 13 2 9 22 2"></polygon>
+                </svg>
+                <span>Ask Fellow</span>
+              </button>
+              <button type="button" id="btn-stop-stream" class="btn btn-danger composer-send-btn hidden" title="Stop response">
+                <span>Stop</span>
+              </button>
+            </form>
+          </div>
+        </main>
+
+        <!-- ADVANCED MODE PANEL (Hidden in Simple Mode, Shown in Advanced Mode) -->
+        <aside id="advanced-panel" class="advanced-panel hidden" aria-label="Advanced Mode Controls">
+          <div class="advanced-panel-header">
+            <h3>Advanced Studio</h3>
+            <span class="advanced-badge">STEM &amp; Power Controls</span>
+          </div>
+
+          <div class="advanced-panel-scroll">
+            <!-- Named Presets Section -->
+            <div class="adv-card">
+              <div class="adv-card-header">
+                <h4>Named Presets</h4>
+                <button type="button" id="btn-delete-preset" class="btn-text-danger hidden" title="Delete custom preset">
+                  Delete
+                </button>
+              </div>
+              <p class="adv-hint">Quickly switch Fellow's persona, temperature, and context window:</p>
+              <div id="presets-chips" class="presets-chips">
+                <!-- Populated dynamically -->
+              </div>
+
+              <div class="preset-save-row">
+                <input
+                  type="text"
+                  id="new-preset-name"
+                  class="form-input form-input-sm"
+                  placeholder="Preset name (e.g. Lab Report Coach)"
+                />
+                <button type="button" id="btn-save-preset" class="btn btn-secondary btn-sm">
+                  Save Preset
+                </button>
+              </div>
+            </div>
+
+            <!-- Generation Parameters -->
+            <div class="adv-card">
+              <h4>Model Parameters</h4>
+
+              <div class="form-group">
+                <div class="form-label-row">
+                  <label for="adv-temperature">Temperature</label>
+                  <span id="adv-temperature-val" class="param-value-badge">0.40</span>
+                </div>
+                <input
+                  type="range"
+                  id="adv-temperature"
+                  min="0"
+                  max="1.5"
+                  step="0.05"
+                  value="0.4"
+                  class="range-slider"
+                />
+                <div class="range-scale-labels">
+                  <span>0.0 (Precise)</span>
+                  <span>0.5 (Balanced)</span>
+                  <span>1.2+ (Creative)</span>
+                </div>
+              </div>
+
+              <div class="form-group">
+                <div class="form-label-row">
+                  <label for="adv-num-ctx">Context Length (<code>num_ctx</code>)</label>
+                  <span id="adv-num-ctx-val" class="param-value-badge">4096 tokens</span>
+                </div>
+                <select id="adv-num-ctx" class="form-select">
+                  <option value="2048">2048 tokens (Best for 4 GB RAM laptops)</option>
+                  <option value="4096" selected>4096 tokens (Recommended default)</option>
+                  <option value="8192">8192 tokens (Long papers — needs 8+ GB RAM)</option>
+                  <option value="16384">16384 tokens (Deep synthesis — needs 12+ GB RAM)</option>
+                </select>
+              </div>
+
+              <div class="form-group">
+                <label for="adv-system-prompt">System Prompt</label>
+                <textarea
+                  id="adv-system-prompt"
+                  rows="5"
+                  class="form-textarea"
+                  placeholder="Customize instructions for how Fellow responds..."
+                ></textarea>
+                <div class="adv-prompt-actions">
+                  <button type="button" id="btn-apply-adv-params" class="btn btn-primary btn-sm">
+                    Apply Parameters
+                  </button>
+                  <span id="adv-saved-indicator" class="adv-saved-indicator hidden">Saved ✓</span>
+                </div>
+              </div>
+            </div>
+
+            <!-- Embedded Model Manager Summary in Advanced Panel -->
+            <div class="adv-card">
+              <div class="adv-card-header">
+                <h4>Model Manager</h4>
+                <button type="button" id="btn-adv-open-models" class="btn btn-subtle btn-xs">
+                  Full Catalog &amp; Pull
+                </button>
+              </div>
+              <div id="adv-installed-models-list" class="adv-models-mini-list">
+                <!-- Shows real model tags & disk sizes with delete buttons -->
+              </div>
+            </div>
+          </div>
+        </aside>
+      </div>
+    </div>
+  </div>
+
+  <!-- =====================================================================
+       BROWSE MODELS & FULL MODEL MANAGER MODAL
+       ===================================================================== -->
+  <div id="models-modal" class="modal-overlay hidden" role="dialog" aria-modal="true" aria-labelledby="models-modal-title">
+    <div class="modal-card modal-xl">
+      <div class="modal-header">
+        <div>
+          <h2 id="models-modal-title">Browse &amp; Manage AI Models</h2>
+          <p class="modal-subtitle">
+            Download assistants tailored for your laptop's memory, control downloads, or free up disk space.
+          </p>
+        </div>
+        <button type="button" class="icon-btn modal-close-btn" data-close-modal="models-modal" aria-label="Close">
+          ✕
+        </button>
+      </div>
+
+      <div class="modal-body">
+        <!-- Freed Disk Space / Notification Banner -->
+        <div id="models-feedback-banner" class="info-banner success-banner hidden"></div>
+
+        <!-- Hardware RAM Recommendation Bar -->
+        <div class="models-ram-bar">
+          <div class="models-ram-info">
+            <strong id="models-ram-headline">System Memory Check:</strong>
+            <span id="models-ram-detail">Detecting memory...</span>
+          </div>
+          <button type="button" id="btn-models-rerun-ram" class="btn btn-subtle btn-sm">
+            Re-run Memory Check
+          </button>
+        </div>
+
+        <!-- Curated Model Lineup -->
+        <section class="models-section">
+          <h3 class="models-section-title">Curated Assistants for Fellow</h3>
+          <div id="curated-models-grid" class="curated-models-grid">
+            <!-- Populated dynamically -->
+          </div>
+        </section>
+
+        <!-- Add a Custom Model -->
+        <section class="models-section">
+          <h3 class="models-section-title">Add a Custom Model</h3>
+          <div class="custom-model-card">
+            <div class="custom-model-warning">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path>
+                <line x1="12" y1="9" x2="12" y2="13"></line>
+                <line x1="12" y1="17" x2="12.01" y2="17"></line>
+              </svg>
+              <span>
+                <strong>Heads up:</strong> Unlisted or custom models aren't verified by Fellow's author and may run slowly or produce lower quality responses on weaker machines.
+              </span>
+            </div>
+            <form id="custom-model-form" class="custom-model-form">
+              <input
+                type="text"
+                id="custom-model-input"
+                class="form-input"
+                placeholder="Type any Ollama tag or hf.co/ reference (e.g. phi3:mini, mistral:7b, hf.co/...)"
+              />
+              <button type="submit" class="btn btn-primary">
+                Download Custom Model
+              </button>
+            </form>
+            <div id="custom-downloads-list" class="custom-downloads-list"></div>
+          </div>
+        </section>
+
+        <!-- Installed Models on Disk -->
+        <section class="models-section">
+          <h3 class="models-section-title">Installed Models on Your Computer</h3>
+          <div id="installed-models-table-wrap" class="installed-models-wrap">
+            <!-- Lists every installed model with disk size and Delete button -->
+          </div>
+        </section>
+      </div>
+    </div>
+  </div>
+
+  <!-- =====================================================================
+       SETTINGS MODAL (Theme, Mode, Re-run RAM Check, About link)
+       ===================================================================== -->
+  <div id="settings-modal" class="modal-overlay hidden" role="dialog" aria-modal="true" aria-labelledby="settings-modal-title">
+    <div class="modal-card modal-md">
+      <div class="modal-header">
+        <h2 id="settings-modal-title">Fellow Settings</h2>
+        <button type="button" class="icon-btn modal-close-btn" data-close-modal="settings-modal" aria-label="Close">
+          ✕
+        </button>
+      </div>
+
+      <div class="modal-body">
+        <!-- Theme Toggle -->
+        <div class="settings-row">
+          <div class="settings-info">
+            <h4>Appearance Theme</h4>
+            <p>Choose between Warm Parchment &amp; Oxford Ink (Light) or Nocturnal Study (Dark).</p>
+          </div>
+          <div class="theme-switcher-group">
+            <button type="button" id="btn-theme-light" class="mode-btn active" data-theme-val="light">
+              ☀ Light
+            </button>
+            <button type="button" id="btn-theme-dark" class="mode-btn" data-theme-val="dark">
+              ☾ Dark
+            </button>
+          </div>
+        </div>
+
+        <!-- Interface Mode -->
+        <div class="settings-row">
+          <div class="settings-info">
+            <h4>Interface Experience</h4>
+            <p>
+              <strong>Simple Mode</strong> keeps things clean and friendly.
+              <strong>Advanced Mode</strong> unlocks temperature, context window (<code>num_ctx</code>), presets, and chunk inspection.
+            </p>
+          </div>
+          <div class="theme-switcher-group">
+            <button type="button" id="btn-settings-mode-simple" class="mode-btn active" data-mode-val="simple">
+              Simple
+            </button>
+            <button type="button" id="btn-settings-mode-advanced" class="mode-btn" data-mode-val="advanced">
+              Advanced
+            </button>
+          </div>
+        </div>
+
+        <!-- Document Grounding Toggle -->
+        <div class="settings-row">
+          <div class="settings-info">
+            <h4>Use Uploaded Documents in Chat</h4>
+            <p>Automatically search your global and chat-scoped documents when answering questions.</p>
+          </div>
+          <label class="switch-toggle">
+            <input type="checkbox" id="toggle-use-documents" checked />
+            <span class="switch-slider"></span>
+          </label>
+        </div>
+
+        <!-- System RAM Check & Smart Recommendation -->
+        <div class="settings-ram-card">
+          <div class="settings-ram-header">
+            <div>
+              <h4>Hardware &amp; Memory Check</h4>
+              <p id="settings-ram-message" class="settings-ram-text">
+                Checking system memory...
+              </p>
+            </div>
+            <button type="button" id="btn-settings-rerun-ram" class="btn btn-secondary btn-sm">
+              Re-run Memory Check
+            </button>
+          </div>
+          <div id="settings-ram-tiers" class="settings-ram-tiers">
+            <!-- Quick buttons to apply recommended tier -->
+          </div>
+        </div>
+
+        <!-- Footer link to About Fellow -->
+        <div class="settings-footer-bar">
+          <button type="button" id="btn-settings-open-about" class="btn btn-subtle btn-sm">
+            About Fellow &amp; Credits
+          </button>
+          <button type="button" class="btn btn-primary btn-sm" data-close-modal="settings-modal">
+            Done
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- =====================================================================
+       ABOUT FELLOW / CREDITS MODAL
+       ===================================================================== -->
+  <div id="about-modal" class="modal-overlay hidden" role="dialog" aria-modal="true" aria-labelledby="about-modal-title">
+    <div class="modal-card modal-sm">
+      <div class="modal-header">
+        <h2 id="about-modal-title">About Fellow</h2>
+        <button type="button" class="icon-btn modal-close-btn" data-close-modal="about-modal" aria-label="Close">
+          ✕
+        </button>
+      </div>
+
+      <div class="modal-body about-modal-body">
+        <div class="fellow-logo-badge large">
+          <img src="/assets/logo.png" alt="Fellow Logo" class="fellow-logo-img" />
+        </div>
+        <h3 class="about-brand-heading">Fellow</h3>
+        <p class="about-tagline">Your Offline Study &amp; Research Companion</p>
+        <p class="about-description">
+          Fellow is designed for students and professors to study, analyze readings, and chat with local AI models 100% offline — even on modest laptops.
+        </p>
+
+        <div class="about-credits-box">
+          <p class="about-credit-line">Created by <strong>Ayman Boumait</strong></p>
+          <div class="about-social-links">
+            <a
+              href="https://github.com/AymanBoumait"
+              data-external-url="https://github.com/AymanBoumait"
+              class="social-icon-link"
+              title="Ayman Boumait on GitHub"
+            >
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
+                <path d="M12 0.3C5.4 0.3 0 5.7 0 12.3c0 5.3 3.4 9.8 8.2 11.4.6.1.8-.3.8-.6v-2.2c-3.3.7-4-1.4-4-1.4-.5-1.4-1.3-1.8-1.3-1.8-1.1-.7.1-.7.1-.7 1.2.1 1.8 1.2 1.8 1.2 1.1 1.8 2.8 1.3 3.5 1 .1-.8.4-1.3.8-1.6-2.7-.3-5.5-1.3-5.5-5.9 0-1.3.5-2.4 1.2-3.2-.1-.3-.5-1.5.1-3.2 0 0 1-.3 3.3 1.2 1-.3 2-.4 3-.4s2 .1 3 .4c2.3-1.5 3.3-1.2 3.3-1.2.6 1.7.2 2.9.1 3.2.8.8 1.2 1.9 1.2 3.2 0 4.6-2.8 5.6-5.5 5.9.4.4.8 1.1.8 2.2v3.3c0 .3.2.7.8.6 4.8-1.6 8.2-6.1 8.2-11.4C24 5.7 18.6 0.3 12 0.3z"/>
+              </svg>
+              <span>GitHub</span>
+            </a>
+
+            <a
+              href="https://www.linkedin.com/in/ayman-boumait"
+              data-external-url="https://www.linkedin.com/in/ayman-boumait"
+              class="social-icon-link"
+              title="Ayman Boumait on LinkedIn"
+            >
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
+                <path d="M19 3a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h14m-.5 15.5v-5.3a3.26 3.26 0 0 0-3.26-3.26c-.85 0-1.84.52-2.28 1.3v-1.11h-2.79v8.37h2.79v-4.93c0-.77.62-1.4 1.39-1.4a1.4 1.4 0 0 1 1.4 1.4v4.93h2.75M6.88 8.56a1.68 1.68 0 0 0 1.68-1.68c0-.93-.75-1.69-1.68-1.69a1.69 1.69 0 0 0-1.69 1.69c0 .93.76 1.68 1.69 1.68m1.39 9.94v-8.37H5.5v8.37h2.77z"/>
+              </svg>
+              <span>LinkedIn</span>
+            </a>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- =====================================================================
+       CONFIRMATION / PROMPT DIALOG MODAL
+       ===================================================================== -->
+  <div id="dialog-modal" class="modal-overlay hidden" role="dialog" aria-modal="true" aria-labelledby="dialog-title">
+    <div class="modal-card modal-sm">
+      <div class="modal-header">
+        <h3 id="dialog-title">Confirm Action</h3>
+        <button type="button" class="icon-btn modal-close-btn" data-close-modal="dialog-modal" aria-label="Close">
+          ✕
+        </button>
+      </div>
+      <div class="modal-body">
+        <div id="dialog-message" class="dialog-message"></div>
+        <div id="dialog-input-wrap" class="dialog-input-wrap hidden">
+          <input type="text" id="dialog-input" class="form-input" />
+        </div>
+        <div class="dialog-actions">
+          <button type="button" id="btn-dialog-cancel" class="btn btn-subtle" data-close-modal="dialog-modal">
+            Cancel
+          </button>
+          <button type="button" id="btn-dialog-confirm" class="btn btn-primary">
+            Confirm
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Toast Notification Container -->
+  <div id="toast-container" class="toast-container" aria-live="polite"></div>
+
+  <script src="/static/js/markdown.js"></script>
+  <script src="/static/js/app.js"></script>
+</body>
+</html>

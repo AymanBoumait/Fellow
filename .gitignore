@@ -1,0 +1,46 @@
+# Python bytecode & caches
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+
+# Virtual environments
+.venv/
+venv/
+env/
+ENV/
+
+# PyInstaller & Inno Setup build outputs
+build/
+dist/
+installer_output/
+*.manifest
+*.spec
+!fellow.spec
+
+# Local runtime study data & stores (if FELLOW_DATA_DIR is set inside the repo)
+fellow_data/
+data/
+vector_store/
+vision_store/
+uploaded_files/
+staged_uploads/
+generated_files/
+chats.json
+documents.json
+settings.json
+*.faiss
+
+# Environment & OS / IDE files
+.env
+.env.*
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+Desktop.ini
+*.log
+*.tmp
