@@ -1,0 +1,63 @@
+name: Build macOS Installer (.dmg)
+
+on:
+  release:
+    types: [published]
+  workflow_dispatch:
+    inputs:
+      release_tag:
+        description: "Optional existing GitHub Release tag (e.g. v1.0.0) to attach the built .dmg files to"
+        required: false
+        default: ""
+        type: string
+
+permissions:
+  contents: write
+
+jobs:
+  build-macos:
+    name: Build macOS (${{ matrix.label }})
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: macos-15
+            arch: arm64
+            label: Apple Silicon
+          - os: macos-15-intel
+            arch: x86_64
+            label: Intel
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python 3.12
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install Python and PyObjC dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt pyobjc-core pyobjc-framework-Cocoa pyobjc-framework-WebKit
+
+      - name: Build Fellow.app with bundled Ollama and create DMG
+        run: |
+          chmod +x build_mac.sh
+          ./build_mac.sh
+
+      - name: Upload macOS DMG artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: Fellow-macOS-${{ matrix.arch }}
+          path: dist/Fellow-macOS-*.dmg
+
+      - name: Attach DMG to GitHub Release (if release event or release_tag provided)
+        if: github.event_name == 'release' || inputs.release_tag != ''
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TARGET_TAG: ${{ github.event_name == 'release' && github.event.release.tag_name || inputs.release_tag }}
+        run: |
+          gh release upload "$TARGET_TAG" dist/Fellow-macOS-*.dmg --clobber

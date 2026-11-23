@@ -37,37 +37,42 @@ Created by **Ayman Boumait** ([GitHub](https://github.com/AymanBoumait) • [Lin
 
 ### Step 1: Install Ollama
 Fellow uses Ollama in the background to run AI models offline on your laptop.
-1. Download and install Ollama from [ollama.com/download](https://ollama.com/download).
-2. *(Optional)* Verify Ollama works by opening PowerShell/Terminal and running:
-   ```powershell
-   ollama --version
-   ```
+- **Windows / macOS Packaged Users**:
+  - Windows **`FellowSetup.exe`** bundles `OllamaSetup.exe` and installs it silently if missing.
+  - macOS **`Fellow-macOS-arm64.dmg`** / **`Fellow-macOS-x86_64.dmg`** bundles Ollama right inside `Fellow.app`—no separate Ollama install needed.
+- **Running from Source (All Platforms)**:
+  1. Download and install Ollama from [ollama.com/download](https://ollama.com/download) ([macOS download](https://ollama.com/download/mac)).
+  2. *(Optional)* Verify Ollama works in PowerShell / Terminal:
+     ```bash
+     ollama --version
+     ```
 
 ### Step 2: Download Fellow & Install Dependencies
 1. Clone this repository (or click **Code → Download ZIP** on GitHub and extract it):
-   ```powershell
+   ```bash
    git clone https://github.com/AymanBoumait/Fellow.git
    cd Fellow
    ```
 2. *(Recommended)* Create and activate a Python virtual environment (Python 3.10+):
-   ```powershell
-   python -m venv .venv
-   .\.venv\Scripts\Activate.ps1
-   ```
+   - **Windows (PowerShell):**
+     ```powershell
+     python -m venv .venv
+     .\.venv\Scripts\Activate.ps1
+     ```
+   - **macOS (Terminal):**
+     ```bash
+     python3 -m venv .venv
+     source .venv/bin/activate
+     ```
 3. Install required Python packages:
-   ```powershell
+   ```bash
    pip install -r requirements.txt
    ```
 
 ### Step 3: Launch Fellow
 Start Fellow as a native desktop window (PyWebView):
-```powershell
-python app.py
-```
-Or open Fellow in your default web browser instead:
-```powershell
-python app.py --browser
-```
+- **Windows:** `python app.py` (or `python app.py --browser`)
+- **macOS:** `python3 app.py` (or `python3 app.py --browser`)
 
 ### Step 4: Complete First-Run Setup
 1. On first launch, Fellow checks that Ollama is running and measures your computer's RAM.
@@ -147,14 +152,45 @@ An Inno Setup script (`installer.iss`) and automated PowerShell builder (`build_
 
 ---
 
+## Step-by-Step Guide: macOS App & `.dmg` (Apple Silicon & Intel)
+
+Fellow supports both **Apple Silicon (`arm64`, M1–M4)** and **Intel (`x86_64`)** Macs, and packages **Ollama directly inside `Fellow.app`** so Mac users do not need to install Python or Ollama separately.
+
+### Installing on macOS (End Users)
+1. Download **`Fellow-macOS-arm64.dmg`** (for M1/M2/M3/M4 Macs) or **`Fellow-macOS-x86_64.dmg`** (for Intel Macs) from **Releases**.
+2. Open the `.dmg` and drag **`Fellow.app`** into **Applications**.
+3. **First launch (unsigned open-source app notice):** Because `Fellow.app` is not notarized with a paid Apple Developer ID, macOS Gatekeeper may warn *"Fellow cannot be opened because the developer cannot be verified"* or report the app is damaged. Allow it once via either:
+   - Running this command in **Terminal**:
+     ```bash
+     xattr -cr /Applications/Fellow.app
+     ```
+   - Or opening **System Settings → Privacy & Security** and clicking **Open Anyway**.
+4. Launch **Fellow**—the bundled Ollama runtime starts automatically in the background and shuts down cleanly when you quit.
+
+### Building `.dmg` Automatically on GitHub Actions (Even Without a Mac)
+A GitHub Actions workflow (`.github/workflows/build-macos.yml`) builds both `Fellow-macOS-arm64.dmg` (`macos-15`) and `Fellow-macOS-x86_64.dmg` (`macos-15-intel`) for free:
+- **Automatic on Release:** Publishing any GitHub Release automatically builds both `.dmg` files and attaches them to that release.
+- **Manual Run (Attach to an Existing Release):** Go to **Actions → Build macOS Installer (.dmg) → Run workflow**, optionally enter an existing tag such as `v1.0.0` in **`release_tag`**, and the workflow will build and upload both `.dmg` installers directly to that release.
+
+### Building Locally on a Mac
+On macOS (with Python 3.10+):
+```bash
+pip install -r requirements.txt pyobjc-core pyobjc-framework-Cocoa pyobjc-framework-WebKit
+chmod +x build_mac.sh
+./build_mac.sh
+```
+This generates `assets/icon.icns`, bundles `dist/Fellow.app` with Ollama inside `Fellow.app/Contents/Resources/ollama/`, ad-hoc signs it, and outputs `dist/Fellow-macOS-$(uname -m).dmg`.
+
+---
+
 ## Project Structure & Local Data Privacy
 
 - `app.py` — Flask API backend, SSE streaming, RAG/Vision routing, and PyWebView desktop launcher
 - `backend/config.py` — RAM detection, model catalog, presets, settings persistence
-- `backend/ollama_manager.py` — Ollama lifecycle, model downloads (pause/resume/cancel), embeddings, streaming chat
+- `backend/ollama_manager.py` — Ollama lifecycle (system install or bundled sidecar), model downloads (pause/resume/cancel), embeddings, streaming chat
 - `backend/document_store.py` — PDF/DOCX/TXT/Image ingestion, OCR & Vision handling, FAISS indexing, document scoping
 - `backend/chat_store.py` — Local conversation persistence and `.md` export
 - `static/` — Offline HTML/CSS/JS frontend, custom Markdown & syntax highlighter (`static/js/markdown.js`)
 - `assets/` — Fellow owl logo and application icons (`logo.png`, `icon.png`, `icon.ico`, `logo_source.jpg`)
 
-All user chats, settings, uploaded documents, FAISS indexes, and visual caches are stored privately on your machine in `%LOCALAPPDATA%\Fellow` (or the directory specified by `FELLOW_DATA_DIR`), never inside the source repository.
+All user chats, settings, uploaded documents, FAISS indexes, and visual caches are stored privately on your machine in `%LOCALAPPDATA%\Fellow` on Windows or `~/Library/Application Support/Fellow` on macOS (or the directory specified by `FELLOW_DATA_DIR`), never inside the source repository.

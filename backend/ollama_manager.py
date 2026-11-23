@@ -23,6 +23,7 @@ from backend.config import (
     EMBEDDING_MODEL,
     OLLAMA_BASE_URL,
     get_friendly_model_info,
+    get_resource_path,
 )
 
 
@@ -78,8 +79,33 @@ def is_ocr_specialized_model(model_name: str) -> bool:
     return "lightonocr" in lower
 
 
+def _find_bundled_ollama_binary() -> Optional[str]:
+    """Locate an Ollama binary bundled directly inside the packaged Fellow app bundle."""
+    exe_dir = os.path.dirname(os.path.abspath(sys.executable))
+    candidates: List[str] = []
+
+    if sys.platform == "darwin":
+        candidates.extend([
+            os.path.abspath(os.path.join(exe_dir, "..", "Resources", "ollama", "ollama")),
+            os.path.abspath(os.path.join(exe_dir, "..", "Resources", "ollama", "bin", "ollama")),
+            os.path.abspath(os.path.join(exe_dir, "ollama", "ollama")),
+            get_resource_path(os.path.join("ollama", "ollama")),
+            get_resource_path(os.path.join("ollama", "bin", "ollama")),
+        ])
+    elif sys.platform == "win32":
+        candidates.extend([
+            os.path.abspath(os.path.join(exe_dir, "ollama", "ollama.exe")),
+            get_resource_path(os.path.join("ollama", "ollama.exe")),
+        ])
+
+    for path in candidates:
+        if path and os.path.isfile(path):
+            return path
+    return None
+
+
 def find_ollama_binary() -> Optional[str]:
-    """Locate the ollama executable in PATH or standard installation paths."""
+    """Locate the ollama executable in PATH, standard install paths, or Fellow's bundled sidecar."""
     in_path = shutil.which("ollama")
     if in_path and os.path.exists(in_path):
         return in_path
@@ -108,7 +134,8 @@ def find_ollama_binary() -> Optional[str]:
     for path in candidates:
         if path and os.path.exists(path):
             return path
-    return None
+
+    return _find_bundled_ollama_binary()
 
 
 def get_ollama_models_dir() -> str:
@@ -172,6 +199,7 @@ class OllamaManager:
         self._downloads: Dict[str, DownloadTask] = {}
         self._downloads_lock = threading.Lock()
         self._spawned_process: Optional[subprocess.Popen] = None
+        self._spawned_bundled: bool = False
 
     def warmup_model(self, model_name: str) -> None:
         """Pre-load the selected chat model into memory in a background thread so first reply is instant."""
@@ -211,13 +239,18 @@ class OllamaManager:
         return None
 
     def start_ollama_service(self) -> bool:
-        """If Ollama is installed on disk but not running, start `ollama serve` silently."""
+        """If Ollama is installed on disk (or bundled in the app) but not running, start `ollama serve` silently."""
         if self.is_running(timeout=1.5):
             return True
 
         binary = find_ollama_binary()
         if not binary:
             return False
+
+        bundled_bin = _find_bundled_ollama_binary()
+        is_bundled = bool(
+            bundled_bin and os.path.abspath(binary) == os.path.abspath(bundled_bin)
+        )
 
         try:
             creationflags = 0
@@ -226,19 +259,38 @@ class OllamaManager:
 
             self._spawned_process = subprocess.Popen(
                 [binary, "serve"],
+                cwd=os.path.dirname(os.path.abspath(binary)) or None,
                 stdout=subprocess.DEVNULL,
                 stderr=subprocess.DEVNULL,
                 stdin=subprocess.DEVNULL,
                 creationflags=creationflags,
             )
-            # Wait up to 6 seconds for Ollama API to come online
-            for _ in range(12):
+            self._spawned_bundled = is_bundled
+            # Wait up to 10 seconds for Ollama API (including first-run Metal init on macOS)
+            for _ in range(20):
                 time.sleep(0.5)
                 if self.is_running(timeout=1.0):
                     return True
         except Exception:
             pass
         return self.is_running(timeout=1.5)
+
+    def stop_spawned_service(self) -> None:
+        """Stop an Ollama background server only if Fellow spawned its own bundled sidecar."""
+        if not self._spawned_bundled or self._spawned_process is None:
+            return
+        if self._spawned_process.poll() is not None:
+            return
+        try:
+            self._spawned_process.terminate()
+            self._spawned_process.wait(timeout=3)
+        except Exception:
+            try:
+                self._spawned_process.kill()
+            except Exception:
+                pass
+        finally:
+            self._spawned_bundled = False
 
     def check_status(self, auto_start: bool = True) -> Dict[str, Any]:
         """Check whether Ollama is installed and running; auto-start if installed."""

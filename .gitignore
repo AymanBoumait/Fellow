@@ -19,8 +19,10 @@ dist/
 installer_assets/
 installer_output/
 *.manifest
+*.dmg
 *.spec
 !fellow.spec
+assets/icon.icns
 
 # Local runtime study data & stores (if FELLOW_DATA_DIR is set inside the repo)
 fellow_data/

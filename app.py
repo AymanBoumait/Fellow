@@ -3,6 +3,7 @@ Fellow — Offline Study & Research Desktop Application
 Main entry point: Flask backend server + PyWebView desktop window.
 """
 import argparse
+import atexit
 import json
 import os
 import re
@@ -112,6 +113,7 @@ app.config["MAX_CONTENT_LENGTH"] = 128 * 1024 * 1024  # 128 MB upload limit
 
 settings_manager = SettingsManager()
 ollama_manager = OllamaManager()
+atexit.register(ollama_manager.stop_spawned_service)
 document_store = DocumentStore(ollama=ollama_manager)
 chat_store = ChatStore()
 

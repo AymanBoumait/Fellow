@@ -1,12 +1,15 @@
 # -*- mode: python ; coding: utf-8 -*-
 """
-PyInstaller spec file for Fellow (Windows standalone desktop executable).
+PyInstaller spec file for Fellow (Windows standalone executable & macOS .app bundle).
 Run with:
     pyinstaller fellow.spec --clean --noconfirm
 """
+import os
+import sys
 from PyInstaller.utils.hooks import collect_data_files, collect_dynamic_libs, collect_submodules
 
 block_cipher = None
+is_mac = sys.platform == "darwin"
 
 datas = [
     ("static", "static"),
@@ -26,14 +29,31 @@ hiddenimports = [
     "rapidocr_onnxruntime",
     "onnxruntime",
     "webview",
-    "clr_loader",
-    "pythonnet",
     "psutil",
     "pypdf",
     "docx",
     "engineio.async_drivers.threading",
 ]
+if is_mac:
+    hiddenimports += [
+        "webview.platforms.cocoa",
+        "objc",
+        "Cocoa",
+        "WebKit",
+        "Foundation",
+        "AppKit",
+    ]
+else:
+    hiddenimports += [
+        "clr_loader",
+        "pythonnet",
+    ]
 hiddenimports += collect_submodules("webview")
+
+if is_mac:
+    app_icon = "assets/icon.icns" if os.path.exists("assets/icon.icns") else None
+else:
+    app_icon = "assets/icon.ico"
 
 a = Analysis(
     ["app.py"],
@@ -73,14 +93,14 @@ exe = EXE(
     debug=False,
     bootloader_ignore_signals=False,
     strip=False,
-    upx=True,
+    upx=not is_mac,
     console=False,
     disable_windowed_traceback=False,
     argv_emulation=False,
     target_arch=None,
     codesign_identity=None,
     entitlements_file=None,
-    icon="assets/icon.ico",
+    icon=app_icon,
 )
 
 coll = COLLECT(
@@ -89,7 +109,25 @@ coll = COLLECT(
     a.zipfiles,
     a.datas,
     strip=False,
-    upx=True,
+    upx=not is_mac,
     upx_exclude=[],
     name="Fellow",
 )
+
+if is_mac:
+    app = BUNDLE(
+        coll,
+        name="Fellow.app",
+        icon=app_icon,
+        bundle_identifier="com.aymanboumait.fellow",
+        info_plist={
+            "CFBundleName": "Fellow",
+            "CFBundleDisplayName": "Fellow",
+            "CFBundleShortVersionString": "1.0.0",
+            "NSHighResolutionCapable": True,
+            "NSPrincipalClass": "NSApplication",
+            "NSAppTransportSecurity": {
+                "NSAllowsLocalNetworking": True,
+            },
+        },
+    )
